@@ -1,0 +1,2 @@
+ID	GeneID	geneSymbol	chr	strand	riExonStart_0base	riExonEnd	upstreamES	upstreamEE	downstreamES	downstreamEE
+3728	"ENSG00000124496.12"	"TRERF1"	chr6	-	42268153	42269848	42268153	42269251	42269498	42269848
