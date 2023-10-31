@@ -1,11 +1,4 @@
 ## script to make transcript blocks above splicing graph
-
-if (!require("BiocManager", quietly = TRUE))
-  install.packages("BiocManager")
-
-BiocManager::install("Gviz")
-
-## script to make transcript blocks above splicing graph
 library(SplicingGraphs)
 library(Gviz)
 library(AnnotationDbi)
@@ -15,12 +8,12 @@ library(tidyverse)
 
 txdb = loadDb(file = 'txdb.gencode34.sqlite')
 isActiveSeq(txdb)[1:25]
-isActiveSeq(txdb)[-match("chr1", names(isActiveSeq(txdb)))] <- FALSE #just make chr1 active
+isActiveSeq(txdb)[-match("chr6", names(isActiveSeq(txdb)))] <- FALSE #just make chr1 active
 sg <- SplicingGraphs(txdb)
 edges_by_gene <- sgedgesByGene(sg)
 
 #obtain splice graph info from gene of interest
-geneID <- "ENSG00000228826.3"
+geneID <- "ENSG00000124496.12"
 edg_gene <- as.data.frame(sgedges(sg[geneID]))
 
 #obtain how many transcripts in gene
