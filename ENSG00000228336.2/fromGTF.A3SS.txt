@@ -1,0 +1,2 @@
+ID	GeneID	geneSymbol	chr	strand	longExonStart_0base	longExonEnd	shortES	shortEE	flankingES	flankingEE
+7557	"ENSG00000228336.2"	"OR9H1P"	chr1	+	247774722	247779524	247775234	247779524	247770168	247770254
