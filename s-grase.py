@@ -3,6 +3,15 @@ import pandas as pd
 import sys
 import os
 
+"""
+Vocabulary:
+	rMATS - (fromGTF)
+	DEXSeq - (gff)
+	A3SS / A5SS - (overhang)
+	RI / SE - (full fragment)
+	graphml - (exon, intron, splicingGraphs)
+"""
+
 def check_fromGTF_input(commandLineArg, argNum):
 	"""
 	Checks command line arguments of fromGTF.event.txt files (args 5 - 8). If the files open properly, then they are
@@ -117,12 +126,12 @@ def map_rMATS_event_overhang(g, fromGTF, eventType):
 	df = pd.read_table(fromGTF, dtype=str)
 	fromGTF.seek(0)
 
-	dx_ID = {}
-	ID = []
-	longES = []
-	longEE = []
-	shortES = []
-	shortEE = []
+	dx_ID = {} # dictionary that maps {rMATS ID: [dexseq fragments]}
+	ID = [] # lists ID #s of every line in the fromGTF
+	longES = [] # lists long exon start coordinates of every line in the fromGTF
+	longEE = [] # lists long exon end coordinates of every line in the fromGTF
+	shortES = [] # lists short exon start coordinates of every line in the fromGTF
+	shortEE = [] # lists short exon end coordinates of every line in the fromGTF
 
 	for x in fromGTF:
 		if x.split()[0] == "ID":
@@ -135,41 +144,48 @@ def map_rMATS_event_overhang(g, fromGTF, eventType):
 		shortEE.append(x.split()[8])
 
 	for x in range(len(longES)):
+		# incrementing values in order to map rMATS coordinate to DEXSeq coordinates (0 index vs 1 index)
 		longES[x] = str(int(longES[x]) + 1)
 		longEE[x] = str(int(longEE[x]) + 1)
 		shortES[x] = str(int(shortES[x]) + 1)
 		shortEE[x] = str(int(shortEE[x]) + 1)
 		if eventType == "A3SS":
+			# finds the edge that spans the vertex labelled with longES coordinates to the vertex labelled with longEE coordinates
+			# ultimately labels the edge that corresponds to the rMATS long edge
 			g.es.find(_within=(g.vs.find(longES[x]).index, g.vs.find(longEE[x]).index))["rmats"] = "rmats long"
+			# finds the edge that spans the vertex labelled with shortES coordinates to the vertex labelled with shortEE coordinates
+			# ultimately labels the edge that corresponds to the rMATS short edge
 			g.es.find(_within=(g.vs.find(shortES[x]).index, g.vs.find(shortEE[x]).index))["rmats"] = "rmats short"
-			if longES[x] == shortES[x]:
-				for i in range(g.vs.find(longEE[x]).index, g.vs.find(shortEE[x]).index):
-					for k in range(len(g.es.select(_within=(i, i+1)))):
-						if g.es.select(_within=(i, i+1))[k]["dexseq_fragment"] != '':
-							g.es.find(_within=(i, i+1))[eventType] = True
-							dx_ID[ID[x]].append('E' + ''.join(g.es.select(_within=(i, i+1))["dexseq_fragment"]))
 
+			# cannot assume longES = shortES or longEE = shortEE since gene strandedness (+/-) affects the layout of the graph
+			if longES[x] == shortES[x]:
+				# for every adjacent pair of nodes (aka every dexseq fragment edge) from the beginning to the end of the overhang,
+				# label that edge with an eventType attribute. In addition, append the dexseq fragment label at that edge to the
+				# dx_ID dictionary {rMATS ID: [dexseq fragment list]}
+				for i in range(g.vs.find(longEE[x]).index, g.vs.find(shortEE[x]).index):
+						# since an overhang fragment cannot line up with an exon, there will only be one edge between adjacent pairs
+						# of nodes over that fragment. Find that one edge (corresponding to dexseq fragment) and label it.
+						g.es.find(_within=(i, i+1))[eventType] = True
+						dx_ID[ID[x]].append('E' + ''.join(g.es.select(_within=(i, i+1))["dexseq_fragment"]))
+
+			# cannot assume longES = shortES or longEE = shortEE since gene strandedness (+/-) affects the layout of the graph.
+			# works exactly the same as longES[x] == shortES[x], but in reverse order
 			if longEE[x] == shortEE[x]:
 				for i in range(g.vs.find(longES[x]).index, g.vs.find(shortES[x]).index):
-					for k in range(len(g.es.select(_within=(i, i+1)))):
-						if g.es.select(_within=(i, i+1))[k]["dexseq_fragment"] != '':
 							g.es.find(_within=(i, i+1))[eventType] = True
 							dx_ID[ID[x]].append('E' + ''.join(g.es.select(_within=(i, i+1))["dexseq_fragment"]))
 		if eventType == "A5SS":
+			# works exactly the same as A3SS events, but in reverse order (A5SS and A3SS are on opposite sides of the exon)
 			g.es.find(_within=(g.vs.find(longEE[x]).index, g.vs.find(longES[x]).index))["rmats"] = "rmats long"
 			g.es.find(_within=(g.vs.find(shortEE[x]).index, g.vs.find(shortES[x]).index))["rmats"] = "rmats short"
 			if longES[x] == shortES[x]:
 				for i in range(g.vs.find(shortEE[x]).index, g.vs.find(longEE[x]).index):
-					for k in range(len(g.es.select(_within=(i, i+1)))):
-						if g.es.select(_within=(i, i+1))[k]["dexseq_fragment"] != '':
-							g.es.find(_within=(i, i+1))["A5SS"] = True
-							dx_ID[ID[x]].append('E' + ''.join(g.es.select(_within=(i, i+1))["dexseq_fragment"]))
+						g.es.find(_within=(i, i+1))["A5SS"] = True
+						dx_ID[ID[x]].append('E' + ''.join(g.es.select(_within=(i, i+1))["dexseq_fragment"]))
 			if longEE[x] == shortEE[x]:
 				for i in range(g.vs.find(shortES[x]).index, g.vs.find(longES[x]).index):
-					for k in range(len(g.es.select(_within=(i, i+1)))):
-						if g.es.select(_within=(i, i+1))[k]["dexseq_fragment"] != '':
-							g.es.find(_within=(i, i+1))["A5SS"] = True
-							dx_ID[ID[x]].append('E' + ''.join(g.es.select(_within=(i, i+1))["dexseq_fragment"]))
+						g.es.find(_within=(i, i+1))["A5SS"] = True
+						dx_ID[ID[x]].append('E' + ''.join(g.es.select(_within=(i, i+1))["dexseq_fragment"]))
 
 	for x in dx_ID:
 		dx_ID[x] = ','.join(dx_ID[x])
@@ -203,10 +219,10 @@ def map_rMATS_event_full_fragment(g, fromGTF, eventType):
 	df = pd.read_table(fromGTF, dtype=str)
 	fromGTF.seek(0)
 
-	dx_ID = {}
-	ID = []
-	exonStart = []
-	exonEnd = []
+	dx_ID = {} # dictionary that maps {rMATS ID: [dexseq fragments]}
+	ID = [] # lists ID #s of every line in the fromGTF
+	exonStart = [] # lists exon start coordinates of every line in the fromGTF
+	exonEnd = [] # lists exon end coordinates of every line in the fromGTF
 
 	for x in fromGTF:
 		if x.split()[0] == "ID":
@@ -219,12 +235,19 @@ def map_rMATS_event_full_fragment(g, fromGTF, eventType):
 	for x in range(len(exonStart)):
 		exonStart[x] = str(int(exonStart[x]) + 1)
 		exonEnd[x] = str(int(exonEnd[x]) + 1)
+		# strand affects directionality of graph
 		if g["strand"] == '+':
+			# for every dexseq fragment edge from the beginning to the end of the exon, label that edge with an eventType
+			# attribute. In addition, append the dexseq fragment label at that edge to the dx_ID dictionary
+			# {rMATS ID: [dexseq fragment list]}
 			for i in range(g.vs.find(exonStart[x]).index, g.vs.find(exonEnd[x]).index):
+				# as SE exons can be exactly the same as dexseq fragments (causing 2 edges to exist over the same node pair),
+				# we choose to select the edge labelled as dexseq fragment, and then label that edge with an eventType attribute.
 				for k in range(len(g.es.select(_within=(i, i+1)))):
 					if g.es.select(_within=(i, i+1))[k]["dexseq_fragment"] != '':
 						g.es.select(_within=(i, i+1))[k][eventType] = True
 						dx_ID[ID[x]].append('E' + ''.join(g.es.select(_within=(i, i+1))["dexseq_fragment"]))
+		# works exactly the same as strand == +, but in the reverse direction
 		if g["strand"] == '-':
 			for i in range(g.vs.find(exonEnd[x]).index, g.vs.find(exonStart[x]).index):
 				for k in range(len(g.es.select(_within=(i, i+1)))):
@@ -343,7 +366,15 @@ for x in range(len(g.es)):
 	else:
 		RI = ""
 
-	edge_labels.append(g.es["dexseq_fragment"][x] + " " + A3SS + " " + A5SS + " " + SE + " " + RI)
+
+	if A3SS or A5SS or SE or RI:
+		newLine = '\n'
+		space = ' '
+	else:
+		newLine = ''
+		space = ''
+
+	edge_labels.append(g.es["dexseq_fragment"][x] + newLine + A3SS + space + A5SS + space + SE + space + RI)
 
 color_dict = {"ex": "orange", "in": "grey", "NA": "grey", None: "dark green"}
 curved_dict = {"ex": -0.3, "in": False, "NA": False, None: 0}
@@ -368,8 +399,8 @@ visual_style["vertex_label"] = g.vs["id"]
 visual_style["edge_arrow_size"] = 0.001
 visual_style["edge_label"] = edge_labels
 visual_style["vertex_shape"] = "hidden"
-visual_style["vertex_label_size"] = 25
-visual_style["edge_label_size"] = 25
+visual_style["vertex_label_size"] = 35
+visual_style["edge_label_size"] = 35
 visual_style["bbox"] = (3500, 1000)
 visual_style["margin"] = 100
 
