@@ -1,4 +1,0 @@
-chr1	dexseq_prepare_annotation.py	aggregate_gene	247770169	247779524	.	+	.	gene_id "ENSG00000228336.2"
-chr1	dexseq_prepare_annotation.py	exonic_part	247770169	247770254	.	+	.	gene_id "ENSG00000228336.2"; transcripts "ENST00000641506.1+ENST00000446393.2"; exonic_part_number "001"
-chr1	dexseq_prepare_annotation.py	exonic_part	247774723	247775234	.	+	.	gene_id "ENSG00000228336.2"; transcripts "ENST00000446393.2"; exonic_part_number "002"
-chr1	dexseq_prepare_annotation.py	exonic_part	247775235	247779524	.	+	.	gene_id "ENSG00000228336.2"; transcripts "ENST00000641506.1+ENST00000446393.2"; exonic_part_number "003"
